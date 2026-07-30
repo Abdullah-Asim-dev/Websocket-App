@@ -159,3 +159,4 @@ io.on("connection", (socket) => {
 // 🟢 FIX 3: Hardcoded port 7777 hata kar process.env.PORT lagaya
 const PORT = process.env.PORT || 7777;
 server.listen(PORT, () => console.log(`Server is running on port ${PORT} with Auth Routes`));
+
