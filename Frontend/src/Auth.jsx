@@ -20,7 +20,8 @@ export const Auth = ({ onAuthSuccess }) => {
     setLoading(true);
     try {
       const endpoint = isSignup ? "/api/auth/signup" : "/api/auth/login";
-      const res = await fetch(`http://localhost:7777${endpoint}`, {
+      // 🚀 FIXED: Localhost URL ko hata kar aapka live Back4App URL laga diya hai
+      const res = await fetch(`https://b4a.run${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -61,12 +62,12 @@ export const Auth = ({ onAuthSuccess }) => {
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <motion.div
           className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full bg-violet-600/25 blur-[120px]"
-          animate={{ x: [0, 30, 0], y: [0, -30, 0], scale: [1, 1.1, 1] }}
+          animate={{ x:, y: [0, -30, 0], scale: [1, 1.1, 1] }}
           transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
           className="absolute -bottom-40 -right-20 w-[500px] h-[500px] rounded-full bg-cyan-500/20 blur-[130px]"
-          animate={{ x: [0, -25, 0], y: [0, 25, 0], scale: [1.05, 1, 1.05] }}
+          animate={{ x: [0, -25, 0], y:, scale: [1.05, 1, 1.05] }}
           transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
         />
       </div>
@@ -113,7 +114,7 @@ export const Auth = ({ onAuthSuccess }) => {
                        px-4 py-3 outline-none focus:border-violet-400/60 focus:bg-white/[0.06]"
           />
 
- <div className="relative">
+          <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Password"
