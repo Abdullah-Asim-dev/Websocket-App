@@ -9,21 +9,22 @@ import dotenv from 'dotenv'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import Message from './models/Message.js'
-import User from './models/User.js' // Naya User model import kiya
+import User from './models/User.js' 
 
 dotenv.config();
 
 const app = express();
 
-// Middlewares - Inka hona zaroori hai taake Express JSON data parh sake
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+// 🟢 FIX 1: CORS mein "*" kiya taake live frontend connect ho sake
+app.use(cors({ origin: "*", credentials: true }));
 app.use(express.json()); 
 
 const server = http.createServer(app);
 
+// 🟢 FIX 2: Socket.io CORS origin ko bhi "*" kiya
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
@@ -34,6 +35,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 mongoose.connection.on("connected", () => console.log("✅ Mongoose connected event fired"));
 mongoose.connection.on("error", (err) => console.log("❌ Mongoose error event:", err));
+
 // ==========================================
 // 🔐 AUTHENTICATION APIS (SIGNUP & LOGIN)
 // ==========================================
@@ -47,17 +49,14 @@ app.post("/api/auth/signup", async (req, res) => {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
-    // Check karein user pehle se toh nahi bana hua
     const userExists = await User.findOne({ username });
     if (userExists) {
       return res.status(400).json({ error: "Oops, this username is already in use" });
     }
 
-    // Password ko secure (hash) karein
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Naya user save karein
     const newUser = await User.create({
       username,
       password: hashedPassword
@@ -75,23 +74,20 @@ app.post("/api/auth/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // User dhoondein database mein
- const user = await User.findOne({ username });
+    const user = await User.findOne({ username });
     if (!user) {
       return res.status(400).json({ error: "Invalid username or password" });
     }
 
-    // Password check karein
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ error: "Invalid username or password" });
     }
 
-    // JWT Token generate karein
     const token = jwt.sign(
       { userId: user._id, username: user.username },
       process.env.JWT_SECRET || "default_secret_key",
-      { expiresIn: "7d" } // Token 7 din tak valid rahega
+      { expiresIn: "7d" } 
     );
 
     res.status(200).json({
@@ -160,6 +156,6 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => { console.log("User Disconnected..", socket.id); });
 });
 
-server.listen(7777, () => console.log("Server is running on port 7777 with Auth Routes"));
-
-
+// 🟢 FIX 3: Hardcoded port 7777 hata kar process.env.PORT lagaya
+const PORT = process.env.PORT || 7777;
+server.listen(PORT, () => console.log(`Server is running on port ${PORT} with Auth Routes`));
