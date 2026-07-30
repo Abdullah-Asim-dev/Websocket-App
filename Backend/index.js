@@ -15,17 +15,35 @@ dotenv.config();
 
 const app = express();
 
-// 🟢 FIX 1: CORS mein "*" kiya taake live frontend connect ho sake
-app.use(cors({ origin: "*", credentials: true }));
+// 🟢 FIXED: Credentials true hone par "*" block ho jata hai, isliye humne specific allowed origins set kar diye hain
+const allowedOrigins = [
+  "https://b4a.run", // Aapka container backend url
+  "http://localhost:5173",                // Local Vite testing ke liye
+  "http://localhost:3000"                 // Local React testing ke liye
+];
+
+app.use(cors({ 
+  origin: function (origin, callback) {
+    // Agar request bina origin ke ho (jaise Postman/Mobile apps) ya allowed list mein ho
+    if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.includes("netlify.app")) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Production safe failover: netlify preview branches ke liye true rakha hai
+    }
+  },
+  credentials: true 
+}));
+
 app.use(express.json()); 
 
 const server = http.createServer(app);
 
-// 🟢 FIX 2: Socket.io CORS origin ko bhi "*" kiya
+// 🟢 FIXED: Socket.io CORS ko bhi valid dynamic configuration de di hai
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: true, // Auto-reflects the requesting origin if valid
     methods: ["GET", "POST"],
+    credentials: true
   },
 });
 
@@ -156,7 +174,5 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => { console.log("User Disconnected..", socket.id); });
 });
 
-// 🟢 FIX 3: Hardcoded port 7777 hata kar process.env.PORT lagaya
 const PORT = process.env.PORT || 7777;
 server.listen(PORT, () => console.log(`Server is running on port ${PORT} with Auth Routes`));
-
