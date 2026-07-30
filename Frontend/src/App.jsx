@@ -66,16 +66,8 @@ const App = () => {
             }}
           />
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <motion.div
-              className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full bg-violet-600/25 blur-[120px]"
-              animate={{ x:, y: [0, -30, 0], scale: [1, 1.1, 1] }}
-              transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div
-              className="absolute -bottom-40 -right-20 w-[500px] h-[500px] rounded-full bg-cyan-500/20 blur-[130px]"
-              animate={{ x: [0, -25, 0], y:, scale: [1.05, 1, 1.05] }}
-              transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
-            />
+
+
           </div>
 
           <div className="relative w-full max-w-sm">
