@@ -15,20 +15,19 @@ dotenv.config();
 
 const app = express();
 
-// 🟢 FIXED: Credentials true hone par "*" block ho jata hai, isliye humne specific allowed origins set kar diye hain
+// 🟢 FIXED: `allowedOrigins` mein aapka exact temporary unique subdomain add kar diya hai
 const allowedOrigins = [
-  "https://b4a.run", // Aapka container backend url
-  "http://localhost:5173",                // Local Vite testing ke liye
-  "http://localhost:3000"                 // Local React testing ke liye
+  "https://websocketapp-z0y973ih.b4a.run", 
+  "http://localhost:5173",                
+  "http://localhost:3000"                 
 ];
 
 app.use(cors({ 
   origin: function (origin, callback) {
-    // Agar request bina origin ke ho (jaise Postman/Mobile apps) ya allowed list mein ho
     if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.includes("netlify.app")) {
       callback(null, true);
     } else {
-      callback(null, true); // Production safe failover: netlify preview branches ke liye true rakha hai
+      callback(null, true); 
     }
   },
   credentials: true 
@@ -38,10 +37,9 @@ app.use(express.json());
 
 const server = http.createServer(app);
 
-// 🟢 FIXED: Socket.io CORS ko bhi valid dynamic configuration de di hai
 const io = new Server(server, {
   cors: {
-    origin: true, // Auto-reflects the requesting origin if valid
+    origin: true, 
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -174,5 +172,9 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => { console.log("User Disconnected..", socket.id); });
 });
 
+// 🟢 FIXED FOR DOCKER: Explicitly listen on `0.0.0.0` taake external requests accept hon
 const PORT = process.env.PORT || 7777;
-server.listen(PORT, () => console.log(`Server is running on port ${PORT} with Auth Routes`));
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Production Server is globally running on port ${PORT}`);
+});
+
