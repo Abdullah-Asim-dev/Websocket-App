@@ -17,10 +17,17 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true,
-}));
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -28,11 +35,27 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
+
+
+// ==============================
+// HEALTH CHECK
+// ==============================
+
+app.get("/", (req, res) => {
+  res.json({
+    message: "Chat Server Running 🚀",
+  });
+});
+
+
+// ==============================
+// DATABASE
+// ==============================
 
 mongoose
   .connect(process.env.MONGO_URI)
@@ -46,6 +69,7 @@ mongoose.connection.on("connected", () => {
 mongoose.connection.on("error", (err) => {
   console.log("❌ Mongoose Error:", err);
 });
+
 
 // ==============================
 // AUTH ROUTES
@@ -79,19 +103,24 @@ app.post("/api/auth/signup", async (req, res) => {
     res.status(201).json({
       message: "Signup Successful",
     });
+
   } catch (err) {
     console.log(err);
+
     res.status(500).json({
       error: "Server Error",
     });
   }
 });
 
+
 app.post("/api/auth/login", async (req, res) => {
   try {
+
     const { username, password } = req.body;
 
     const user = await User.findOne({ username });
+
 
     if (!user) {
       return res.status(400).json({
@@ -99,13 +128,19 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+
+    const isMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
+
 
     if (!isMatch) {
       return res.status(400).json({
         error: "Invalid Credentials",
       });
     }
+
 
     const token = jwt.sign(
       {
@@ -118,62 +153,118 @@ app.post("/api/auth/login", async (req, res) => {
       }
     );
 
+
     res.json({
       token,
       username: user.username,
       message: "Login Successful",
     });
+
+
   } catch (err) {
+
     console.log(err);
+
     res.status(500).json({
       error: "Server Error",
     });
   }
 });
 
+
 // ==============================
 // SOCKET.IO
 // ==============================
 
 io.on("connection", (socket) => {
+
   console.log("✅ User Connected:", socket.id);
 
+
   socket.on("join_room", async (room) => {
+
     socket.join(room);
 
+
     try {
-      const history = await Message.find({ room }).sort({
+
+      const history = await Message.find({
+        room,
+      }).sort({
         createdAt: 1,
       });
 
-      socket.emit("chat_history", history);
+
+      socket.emit(
+        "chat_history",
+        history
+      );
+
+
     } catch (err) {
+
       console.log(err);
+
     }
+
   });
+
+
 
   socket.on("send_message", async (data) => {
+
     try {
+
       const message = await Message.create(data);
 
-      io.to(data.room).emit("receive_message", message);
+
+      io.to(data.room).emit(
+        "receive_message",
+        message
+      );
+
+
     } catch (err) {
+
       console.log(err);
+
     }
+
   });
 
-  socket.on("typing", (data) => {
-    socket.to(data.room).emit("typing", data);
+
+
+  socket.on("typing", (data)=>{
+
+    socket
+    .to(data.room)
+    .emit("typing", data);
+
   });
 
-  socket.on("stop_typing", (data) => {
-    socket.to(data.room).emit("stop_typing", data);
+
+
+  socket.on("stop_typing", (data)=>{
+
+    socket
+    .to(data.room)
+    .emit("stop_typing", data);
+
   });
 
-  socket.on("disconnect", () => {
-    console.log("❌ User Disconnected:", socket.id);
+
+
+  socket.on("disconnect", ()=>{
+
+    console.log(
+      "❌ User Disconnected:",
+      socket.id
+    );
+
   });
+
 });
+
 
 // ==============================
 // SERVER
@@ -181,6 +272,12 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 7777;
 
-server.listen(PORT, () => {
-  console.log(`🚀 Server Running On http://localhost:${PORT}`);
-});
+
+server.listen(
+  PORT,
+  "0.0.0.0",
+  ()=>{
+    console.log(
+      `🚀 Server Running On Port ${PORT}`
+    );
+  }
