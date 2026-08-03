@@ -9,6 +9,7 @@ export const Auth = ({ onAuthSuccess }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false)
   const isSignup = mode === "signup";
+const BACKEND_URL = "https://websocket-app-3.onrender.com";
 
   const handleSubmit = async () => {
     setError("");
@@ -20,12 +21,19 @@ export const Auth = ({ onAuthSuccess }) => {
     setLoading(true);
     try {
       const endpoint = isSignup ? "/api/auth/signup" : "/api/auth/login";
-      // 🚀 FIXED: Localhost URL ko hata kar aapka live Back4App URL laga diya hai
-      const res = await fetch(`https://b4a.run${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      
+      // 🚀 FIXED: Ab sahi live subdomain par request jayegi, jis se CORS error nahi aayega
+    const res = await fetch(`${BACKEND_URL}${endpoint}`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  credentials: "include",
+  body: JSON.stringify({
+    username,
+    password,
+  }),
+});
 
       const data = await res.json();
 
@@ -36,18 +44,18 @@ export const Auth = ({ onAuthSuccess }) => {
       }
 
       if (isSignup) {
-        // Signup ke baad seedha login mode pe le jao
         setMode("login");
         setError("Account ban gaya! Ab login karo.");
         setPassword("");
       } else {
-        // Login success — token aur username save karo
         localStorage.setItem("token", data.token);
         localStorage.setItem("username", data.username);
         onAuthSuccess(data.username);
       }
     } catch (err) {
-      setError("Server se connect nahi ho saka");
+  console.log(err);
+  setError("Server se connect nahi ho saka");
+
     } finally {
       setLoading(false);
     }
@@ -60,8 +68,19 @@ export const Auth = ({ onAuthSuccess }) => {
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#050710] px-4">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full bg-violet-600/25 blur-[120px]"
+          animate={{ x: 30, y: -30, scale: 1.1 }}
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+        />
 
-</div>
+        <motion.div
+          className="absolute -bottom-40 -right-20 w-[500px] h-[500px] rounded-full bg-cyan-500/20 blur-[130px]"
+          animate={{ x: -25, y: 25, scale: 1.05 }}
+          transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
+      
       <div className="relative w-full max-w-sm">
         <motion.div
           className="absolute -inset-[1.5px] rounded-3xl opacity-70"

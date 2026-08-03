@@ -1,89 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
 import ahmad from './assets/ahmad.mp3'
-
 export const Chat = ({ socket, username, room }) => {
   const [currentMessage, setcurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
   const [typingUser, setTypingUser] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const [theme, setTheme] = useState("dark");
   const [replyingTo, setReplyingTo] = useState(null);
   const [reactionPickerFor, setReactionPickerFor] = useState(null);
   const [showComposerEmoji, setShowComposerEmoji] = useState(false);
-
   const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
   const EMOJI_GRID = [
     "😀","😂","😍","😎","🤔","😢","😡","👍","👎","🙏",
     "🎉","🔥","💯","❤️","😴","🤝","👀","✨","😅","🥳",
   ];
-
   const notification = new Audio(ahmad);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
-
   const isDark = theme === "dark";
-
-  const sendMessage = async () => {
-    if (currentMessage !== "" && currentMessage !== " ") {
-      const messageData = {
-        id: Math.random(),
-        room: room,
-        author: username,
-        message: currentMessage,
-        type: "text",
-        status: "sent",
-        replyTo: replyingTo
-          ? { author: replyingTo.author, message: replyingTo.message || (replyingTo.type === "image" ? "Photo" : replyingTo.fileName) }
-          : null,
-        time:
-          (new Date(Date.now()).getHours() % 12) +
-          ":" +
-          new Date(Date.now()).getMinutes(),
-      };
-
-      await socket.emit("send_message", messageData);
-      setMessageList((list) => [...list, messageData]);
-      setcurrentMessage("");
-      setReplyingTo(null);
-      notification.play();
-
-      clearTimeout(typingTimeoutRef.current);
-      socket.emit("stop_typing", { room, author: username });
-    }
-  };
-
-  const sendFile = (file) => {
-    const isImage = file.type.startsWith("image/");
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const messageData = {
-        id: Math.random(),
-        room: room,
-        author: username,
-        message: isImage ? "" : file.name,
-        type: isImage ? "image" : "file",
-        fileData: reader.result,
-        fileName: file.name,
-        status: "sent",
-        time:
-          (new Date(Date.now()).getHours() % 12) +
-          ":" +
-          new Date(Date.now()).getMinutes(),
-      };
-      await socket.emit("send_message", messageData);
-      setMessageList((list) => [...list, messageData]);
-      notification.play();
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const onPickFile = (e) => {
-    const file = e.target.files?.[0];
-    if (file) sendFile(file);
-    e.target.value = "";
-  };
-
   const handleTyping = (value) => {
     setcurrentMessage(value);
 
@@ -105,80 +40,159 @@ export const Chat = ({ socket, username, room }) => {
         : list.filter((m) => m.id !== id)
     );
   };
+const reactToMessage = (id, emoji) => {
+  socket.emit("react_message", {
+    room,
+    id,
+    emoji,
+    author: username
+  });
 
-  const reactToMessage = (id, emoji) => {
-    socket.emit("react_message", { room, id, emoji, author: username });
-    setReactionPickerFor(null);
+  setReactionPickerFor(null);
+};
+
+
+// yahan replace karo
+const onPickFile = (e) => {
+  const file = e.target.files[0];
+
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    const messageData = {
+      room,
+      author: username,
+      type: file.type.startsWith("image/") ? "image" : "file",
+      fileName: file.name,
+      fileData: reader.result,
+      message: "",
+      status: "sent",
+      time: new Date().getHours() + ":" + new Date().getMinutes(),
+    };
+
+    socket.emit("send_message", messageData);
   };
 
-  useEffect(() => {
+  reader.readAsDataURL(file);
+};
+
+
+  const sendMessage = () => {
+
+  if (!currentMessage.trim()) return;
+
+  const messageData = {
+    room,
+    author: username,
+    message: currentMessage,
+    type: "text",
+    status: "sent",
+    replyTo: replyingTo
+      ? {
+          author: replyingTo.author,
+          message: replyingTo.message
+        }
+      : null,
+    time:
+      new Date().getHours() +
+      ":" +
+      new Date().getMinutes(),
+  };
+
+
+  socket.emit(
+    "send_message",
+    messageData
+  );
+
+
+  setcurrentMessage("");
+  setReplyingTo(null);
+
+};
+useEffect(() => {
+
   const handleReceiveMsg = (data) => {
-    setMessageList((list) => [...list, data]);
-    socket.emit("message_status", { room, id: data.id, status: "delivered" });
-    setTimeout(() => {
-      socket.emit("message_status", { room, id: data.id, status: "seen" });
-    }, 900);
+
+    console.log("Received Message:", data);
+
+    setMessageList((list) => [
+      ...list,
+      data
+    ]);
+
+    if (data.author !== username) {
+      socket.emit("message_status", {
+        room,
+        id: data.id,
+        status: "delivered",
+      });
+    }
+
   };
-  socket.on("receive_message", handleReceiveMsg)
+
+
   const handleChatHistory = (history) => {
+    console.log("History:", history);
     setMessageList(history);
   };
-  socket.on("chat_history", handleChatHistory);
+
 
   const handleTypingEvent = (data) => {
-    if (data.author !== username) setTypingUser(data.author);
+    if (data.author !== username) {
+      setTypingUser(data.author);
+    }
   };
+
+
   const handleStopTypingEvent = (data) => {
-    if (data.author !== username) setTypingUser(null);
+    if (data.author !== username) {
+      setTypingUser(null);
+    }
   };
+
+
+  const handleOnlineUsers = (users) => {
+    console.log("Online:", users);
+    setOnlineUsers(users);
+  };
+
+
+  // user online
+  socket.emit("user_online", username);
+
+
+  socket.on("receive_message", handleReceiveMsg);
+  socket.on("chat_history", handleChatHistory);
   socket.on("typing", handleTypingEvent);
   socket.on("stop_typing", handleStopTypingEvent);
+  socket.on("online_users", handleOnlineUsers);
 
-  const handleStatusEvent = (data) => {
-    setMessageList((list) =>
-      list.map((m) => (m.id === data.id ? { ...m, status: data.status } : m))
-    );
-  };
-  socket.on("message_status", handleStatusEvent);
-
-  const handleDeleteEvent = (data) => {
-    setMessageList((list) =>
-      list.map((m) => (m.id === data.id ? { ...m, deleted: true } : m))
-    );
-  };
-  socket.on("delete_message", handleDeleteEvent);
-
-  const handleReactEvent = (data) => {
-    setMessageList((list) =>
-      list.map((m) => {
-        if (m.id !== data.id) return m;
-        const reactions = { ...(m.reactions || {}) };
-        Object.keys(reactions).forEach((emo) => {
-          reactions[emo] = reactions[emo].filter((a) => a !== data.author);
-          if (reactions[emo].length === 0) delete reactions[emo];
-        });
-        reactions[data.emoji] = [...(reactions[data.emoji] || []), data.author];
-        return { ...m, reactions };
-      })
-    );
-  };
-  socket.on("react_message", handleReactEvent);
 
   return () => {
+
     socket.off("receive_message", handleReceiveMsg);
-    socket.off("chat_history", handleChatHistory); // 
+    socket.off("chat_history", handleChatHistory);
     socket.off("typing", handleTypingEvent);
     socket.off("stop_typing", handleStopTypingEvent);
-    socket.off("message_status", handleStatusEvent);
-    socket.off("delete_message", handleDeleteEvent);
-    socket.off("react_message", handleReactEvent);
+    socket.off("online_users", handleOnlineUsers);
+
   };
+
+
 }, [socket, username, room]);
   const containRef = useRef(null);
 
-  useEffect(() => {
-    containRef.current.scrollTop = containRef.current.scrollHeight;
-  }, [messageList, typingUser]);
+useEffect(() => {
+
+  if (containRef.current) {
+    containRef.current.scrollTop =
+      containRef.current.scrollHeight;
+  }
+
+}, [messageList, typingUser]);
 
   const initials = (name) =>
     name ? name.trim().slice(0, 2).toUpperCase() : "?";
@@ -265,7 +279,7 @@ export const Chat = ({ socket, username, room }) => {
                     animate={{ opacity: [1, 0.3, 1] }}
                     transition={{ duration: 1.6, repeat: Infinity }}
                   />
-                  {username} · connected
+                  {username} · {onlineUsers.length} online
                 </span>
               </div>
 
@@ -612,5 +626,3 @@ export const Chat = ({ socket, username, room }) => {
     </>
   );
 };
-
-

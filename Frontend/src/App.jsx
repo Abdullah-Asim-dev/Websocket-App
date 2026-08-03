@@ -5,8 +5,11 @@ import { Chat } from "./Chat";
 import { Auth } from "./Auth";
 import ahmad from "./assets/ahmad.mp3";
 
-// 🚀 FIXED: localhost ko hata kar aapka exact Back4App backend URL laga diya hai
-const socket = io.connect("https://b4a.run");
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const socket = io(BACKEND_URL, {
+  transports: ["websocket"],
+  reconnection: true,
+});
 
 const container = {
   hidden: {},
@@ -66,6 +69,16 @@ const App = () => {
             }}
           />
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full bg-violet-600/25 blur-[120px]"
+          animate={{ x: 0, y: -30, scale: 1.1 }}
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute -bottom-40 -right-20 w-[500px] h-[500px] rounded-full bg-cyan-500/20 blur-[130px]"
+          animate={{ x: -25, y: 25, scale: 1.05 }}
+          transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+        />
 
 
           </div>
