@@ -1,6 +1,5 @@
 import dns from "dns";
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
-
 import express from "express";
 import cors from "cors";
 import { Server } from "socket.io";
@@ -9,14 +8,10 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-
 import Message from "./models/Message.js";
 import User from "./models/User.js";
-
 dotenv.config();
-
 const app = express();
-
 const allowedOrigins = [
   "http://localhost:5173",
   process.env.FRONTEND_URL,
@@ -176,15 +171,19 @@ app.post("/api/auth/login", async (req, res) => {
 // SOCKET.IO
 // ==============================
 
+// ==============================
+// SOCKET.IO
+// ==============================
+
 io.on("connection", (socket) => {
 
   console.log("✅ User Connected:", socket.id);
 
 
+  // JOIN ROOM
   socket.on("join_room", async (room) => {
 
     socket.join(room);
-
 
     try {
 
@@ -197,13 +196,16 @@ io.on("connection", (socket) => {
 
       socket.emit(
         "chat_history",
-        history
+        history.map((msg) => ({
+          ...msg.toObject(),
+          id: msg._id,
+        }))
       );
 
 
     } catch (err) {
 
-      console.log(err);
+      console.log("History Error:", err);
 
     }
 
@@ -211,50 +213,93 @@ io.on("connection", (socket) => {
 
 
 
-  socket.on("send_message", async (data) => {
+  // SEND MESSAGE
+// SEND MESSAGE
+socket.on("send_message", async (data) => {
 
-    try {
-
-      const message = await Message.create(data);
-
-
-      io.to(data.room).emit(
-        "receive_message",
-        message
-      );
+  console.log("SEND MESSAGE:", data);
 
 
-    } catch (err) {
-
-      console.log(err);
-
-    }
-
-  });
+  // ⚡ Send message instantly to connected users
+  io.to(data.room).emit(
+    "receive_message",
+    data
+  );
 
 
+  // 💾 Save message in MongoDB
+  try {
 
-  socket.on("typing", (data)=>{
+    const message = await Message.create(data);
 
-    socket
-    .to(data.room)
-    .emit("typing", data);
+    console.log("SAVED:", message);
 
-  });
+  } catch (err) {
+
+    console.log("Message Error:", err);
+
+  }
+
+});
 
 
-
-  socket.on("stop_typing", (data)=>{
+  // TYPING
+  socket.on("typing", (data) => {
 
     socket
-    .to(data.room)
-    .emit("stop_typing", data);
+      .to(data.room)
+      .emit("typing", data);
 
   });
 
 
 
-  socket.on("disconnect", ()=>{
+  // STOP TYPING
+  socket.on("stop_typing", (data) => {
+
+    socket
+      .to(data.room)
+      .emit("stop_typing", data);
+
+  });
+
+
+
+  // MESSAGE STATUS
+  socket.on("message_status", (data) => {
+
+    socket
+      .to(data.room)
+      .emit("message_status", data);
+
+  });
+
+
+
+  // DELETE MESSAGE
+  socket.on("delete_message", (data) => {
+
+    socket
+      .to(data.room)
+      .emit("delete_message", data);
+
+  });
+
+
+
+  // REACTION
+  socket.on("react_message", (data) => {
+
+    socket
+      .to(data.room)
+      .emit("react_message", data);
+
+  });
+
+
+
+  // DISCONNECT
+  socket.on("disconnect", () => {
 
     console.log(
       "❌ User Disconnected:",
@@ -264,7 +309,6 @@ io.on("connection", (socket) => {
   });
 
 });
-
 
 // ==============================
 // SERVER
