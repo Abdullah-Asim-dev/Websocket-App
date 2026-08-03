@@ -171,16 +171,39 @@ app.post("/api/auth/login", async (req, res) => {
 // SOCKET.IO
 // ==============================
 
-// ==============================
-// SOCKET.IO
-// ==============================
+const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
 
   console.log("✅ User Connected:", socket.id);
 
 
+  // ==============================
+  // USER ONLINE
+  // ==============================
+
+  socket.on("user_online", (username) => {
+
+    onlineUsers.set(username, socket.id);
+
+    io.emit(
+      "online_users",
+      Array.from(onlineUsers.keys())
+    );
+
+    console.log(
+      "🟢 Online Users:",
+      [...onlineUsers.keys()]
+    );
+
+  });
+
+
+
+  // ==============================
   // JOIN ROOM
+  // ==============================
+
   socket.on("join_room", async (room) => {
 
     socket.join(room);
@@ -205,7 +228,10 @@ io.on("connection", (socket) => {
 
     } catch (err) {
 
-      console.log("History Error:", err);
+      console.log(
+        "History Error:",
+        err
+      );
 
     }
 
@@ -213,77 +239,143 @@ io.on("connection", (socket) => {
 
 
 
+  // ==============================
   // SEND MESSAGE
-// SEND MESSAGE
-socket.on("send_message", async (data) => {
+  // ==============================
 
-  console.log("SEND MESSAGE:", data);
+  socket.on("send_message", async (data) => {
 
-
-  // ⚡ Send message instantly to connected users
-  io.to(data.room).emit(
-    "receive_message",
-    data
-  );
+    console.log(
+      "SEND MESSAGE:",
+      data
+    );
 
 
-  // 💾 Save message in MongoDB
-  try {
-
-    const message = await Message.create(data);
-
-    console.log("SAVED:", message);
-
-  } catch (err) {
-
-    console.log("Message Error:", err);
-
-  }
-
-});
+    io.to(data.room).emit(
+      "receive_message",
+      data
+    );
 
 
+    try {
+
+      const message = await Message.create(data);
+
+      console.log(
+        "SAVED:",
+        message._id
+      );
+
+
+    } catch (err) {
+
+      console.log(
+        "Message Error:",
+        err
+      );
+
+    }
+
+  });
+
+
+
+  // ==============================
   // TYPING
+  // ==============================
+
   socket.on("typing", (data) => {
 
     socket
       .to(data.room)
-      .emit("typing", data);
+      .emit(
+        "typing",
+        data
+      );
 
   });
 
 
 
-  // STOP TYPING
   socket.on("stop_typing", (data) => {
 
     socket
       .to(data.room)
-      .emit("stop_typing", data);
+      .emit(
+        "stop_typing",
+        data
+      );
 
   });
 
 
 
+  // ==============================
   // MESSAGE STATUS
-socket.on("message_status", async (data) => {
+  // ==============================
+
+  socket.on("message_status", async (data) => {
+
+    try {
+
+      await Message.findByIdAndUpdate(
+        data.id,
+        {
+          status: data.status
+        }
+      );
+
+
+      socket
+        .to(data.room)
+        .emit(
+          "message_status",
+          data
+        );
+
+
+    } catch(err){
+
+      console.log(
+        "Status Error:",
+        err
+      );
+
+    }
+
+  });
+
+
+
+  // ==============================
+  // DELETE MESSAGE
+  // ==============================
+
+socket.on("delete_message", async (data)=>{
 
   try {
 
     await Message.findByIdAndUpdate(
       data.id,
       {
-        status: data.status
+        deleted: true
       }
     );
 
-    socket
-      .to(data.room)
-      .emit("message_status", data);
 
-  } catch (err) {
+    io.to(data.room)
+      .emit(
+        "delete_message",
+        data
+      );
 
-    console.log("Status Error:", err);
+
+  } catch(err){
+
+    console.log(
+      "Delete Error:",
+      err
+    );
 
   }
 
@@ -291,37 +383,58 @@ socket.on("message_status", async (data) => {
 
 
 
-  // DELETE MESSAGE
-  socket.on("delete_message", (data) => {
-
-    socket
-      .to(data.room)
-      .emit("delete_message", data);
-
-  });
-
-
-
+  // ==============================
   // REACTION
-  socket.on("react_message", (data) => {
+  // ==============================
+
+  socket.on("react_message",(data)=>{
 
     socket
       .to(data.room)
-      .emit("react_message", data);
+      .emit(
+        "react_message",
+        data
+      );
 
   });
 
 
 
+  // ==============================
   // DISCONNECT
-  socket.on("disconnect", () => {
+  // ==============================
+
+  socket.on("disconnect",()=>{
+
+
+    for(
+      let [username,id] 
+      of onlineUsers
+    ){
+
+      if(id === socket.id){
+
+        onlineUsers.delete(username);
+
+      }
+
+    }
+
+
+    io.emit(
+      "online_users",
+      Array.from(onlineUsers.keys())
+    );
+
 
     console.log(
       "❌ User Disconnected:",
       socket.id
     );
 
+
   });
+
 
 });
 
