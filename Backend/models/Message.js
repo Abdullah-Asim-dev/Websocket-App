@@ -14,5 +14,9 @@ const messageSchema = new mongoose.Schema({
   deleted: { type: Boolean, default: false },
   time: String,
   createdAt: { type: Date, default: Date.now },
+  status: {
+  type: String,
+  default: "sent"
+}
 });
 export default mongoose.model("Message", messageSchema);

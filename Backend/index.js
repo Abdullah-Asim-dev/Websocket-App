@@ -266,13 +266,28 @@ socket.on("send_message", async (data) => {
 
 
   // MESSAGE STATUS
-  socket.on("message_status", (data) => {
+socket.on("message_status", async (data) => {
+
+  try {
+
+    await Message.findByIdAndUpdate(
+      data.id,
+      {
+        status: data.status
+      }
+    );
 
     socket
       .to(data.room)
       .emit("message_status", data);
 
-  });
+  } catch (err) {
+
+    console.log("Status Error:", err);
+
+  }
+
+});
 
 
 
