@@ -339,4 +339,3 @@ https://www.linkedin.com/in/abdullah-asim-dev/
 
 This project demonstrates modern full-stack web development using the MERN ecosystem with real-time communication powered by Socket.IO. It showcases secure authentication, database integration, responsive UI design, and production deployment using Netlify and Render.
 
->>>>>>> 687c2b5 (Update chat application features and documentation)
