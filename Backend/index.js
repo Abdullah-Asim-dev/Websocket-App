@@ -171,6 +171,10 @@ app.post("/api/auth/login", async (req, res) => {
 // SOCKET.IO
 // ==============================
 
+// ==============================
+// SOCKET.IO
+// ==============================
+
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
@@ -183,6 +187,8 @@ io.on("connection", (socket) => {
   // ==============================
 
   socket.on("user_online", (username) => {
+
+    socket.username = username;
 
     onlineUsers.set(username, socket.id);
 
@@ -351,35 +357,35 @@ io.on("connection", (socket) => {
   // DELETE MESSAGE
   // ==============================
 
-socket.on("delete_message", async (data)=>{
+  socket.on("delete_message", async (data)=>{
 
-  try {
+    try {
 
-    await Message.findByIdAndUpdate(
-      data.id,
-      {
-        deleted: true
-      }
-    );
-
-
-    io.to(data.room)
-      .emit(
-        "delete_message",
-        data
+      await Message.findByIdAndUpdate(
+        data.id,
+        {
+          deleted:true
+        }
       );
 
 
-  } catch(err){
+      io.to(data.room)
+        .emit(
+          "delete_message",
+          data
+        );
 
-    console.log(
-      "Delete Error:",
-      err
-    );
 
-  }
+    } catch(err){
 
-});
+      console.log(
+        "Delete Error:",
+        err
+      );
+
+    }
+
+  });
 
 
 
@@ -407,16 +413,9 @@ socket.on("delete_message", async (data)=>{
   socket.on("disconnect",()=>{
 
 
-    for(
-      let [username,id] 
-      of onlineUsers
-    ){
+    if(socket.username){
 
-      if(id === socket.id){
-
-        onlineUsers.delete(username);
-
-      }
+      onlineUsers.delete(socket.username);
 
     }
 
