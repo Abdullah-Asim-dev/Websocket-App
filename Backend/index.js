@@ -171,10 +171,6 @@ app.post("/api/auth/login", async (req, res) => {
 // SOCKET.IO
 // ==============================
 
-// ==============================
-// SOCKET.IO
-// ==============================
-
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
@@ -192,10 +188,12 @@ io.on("connection", (socket) => {
 
     onlineUsers.set(username, socket.id);
 
+
     io.emit(
       "online_users",
       Array.from(onlineUsers.keys())
     );
+
 
     console.log(
       "🟢 Online Users:",
@@ -214,34 +212,36 @@ io.on("connection", (socket) => {
 
     socket.join(room);
 
+
     try {
 
       const history = await Message.find({
-        room,
+        room
       }).sort({
-        createdAt: 1,
+        createdAt: 1
       });
 
 
       socket.emit(
         "chat_history",
-        history.map((msg) => ({
+        history.map((msg)=>({
           ...msg.toObject(),
-          id: msg._id,
+          id: msg._id
         }))
       );
 
 
-    } catch (err) {
+    } catch(error){
 
       console.log(
         "History Error:",
-        err
+        error
       );
 
     }
 
   });
+
 
 
 
@@ -249,40 +249,52 @@ io.on("connection", (socket) => {
   // SEND MESSAGE
   // ==============================
 
-  socket.on("send_message", async (data) => {
+  socket.on(
+    "send_message",
+    async(data)=>{
 
-    console.log(
-      "SEND MESSAGE:",
-      data
-    );
-
-
-    io.to(data.room).emit(
-      "receive_message",
-      data
-    );
+      try {
 
 
-    try {
-
-      const message = await Message.create(data);
-
-      console.log(
-        "SAVED:",
-        message._id
-      );
+        const message = await Message.create(data);
 
 
-    } catch (err) {
+        const savedMessage = {
 
-      console.log(
-        "Message Error:",
-        err
-      );
+          ...message.toObject(),
+
+          id: message._id
+
+        };
+
+
+        io.to(data.room).emit(
+          "receive_message",
+          savedMessage
+        );
+
+
+        console.log(
+          "✅ Message Saved:",
+          message._id
+        );
+
+
+      }
+      catch(error){
+
+        console.log(
+          "Message Error:",
+          error
+        );
+
+      }
+
 
     }
+  );
 
-  });
+
 
 
 
@@ -290,29 +302,41 @@ io.on("connection", (socket) => {
   // TYPING
   // ==============================
 
-  socket.on("typing", (data) => {
 
-    socket
+  socket.on(
+    "typing",
+    (data)=>{
+
+      socket
       .to(data.room)
       .emit(
         "typing",
         data
       );
 
-  });
+
+    }
+  );
 
 
 
-  socket.on("stop_typing", (data) => {
+  socket.on(
+    "stop_typing",
+    (data)=>{
 
-    socket
+
+      socket
       .to(data.room)
       .emit(
         "stop_typing",
         data
       );
 
-  });
+
+    }
+  );
+
+
 
 
 
@@ -320,19 +344,24 @@ io.on("connection", (socket) => {
   // MESSAGE STATUS
   // ==============================
 
-  socket.on("message_status", async (data) => {
 
-    try {
-
-      await Message.findByIdAndUpdate(
-        data.id,
-        {
-          status: data.status
-        }
-      );
+  socket.on(
+    "message_status",
+    async(data)=>{
 
 
-      socket
+      try{
+
+
+        await Message.findByIdAndUpdate(
+          data.id,
+          {
+            status:data.status
+          }
+        );
+
+
+        socket
         .to(data.room)
         .emit(
           "message_status",
@@ -340,16 +369,22 @@ io.on("connection", (socket) => {
         );
 
 
-    } catch(err){
+      }
+      catch(error){
 
-      console.log(
-        "Status Error:",
-        err
-      );
+        console.log(
+          "Status Error:",
+          error
+        );
+
+      }
+
 
     }
+  );
 
-  });
+
+
 
 
 
@@ -357,35 +392,45 @@ io.on("connection", (socket) => {
   // DELETE MESSAGE
   // ==============================
 
-  socket.on("delete_message", async (data)=>{
 
-    try {
-
-      await Message.findByIdAndUpdate(
-        data.id,
-        {
-          deleted:true
-        }
-      );
+  socket.on(
+    "delete_message",
+    async(data)=>{
 
 
-      io.to(data.room)
+      try{
+
+
+        await Message.findByIdAndUpdate(
+          data.id,
+          {
+            deleted:true
+          }
+        );
+
+
+        io.to(data.room)
         .emit(
           "delete_message",
           data
         );
 
 
-    } catch(err){
+      }
+      catch(error){
 
-      console.log(
-        "Delete Error:",
-        err
-      );
+        console.log(
+          "Delete Error:",
+          error
+        );
+
+      }
+
 
     }
+  );
 
-  });
+
 
 
 
@@ -393,16 +438,23 @@ io.on("connection", (socket) => {
   // REACTION
   // ==============================
 
-  socket.on("react_message",(data)=>{
 
-    socket
-      .to(data.room)
-      .emit(
-        "react_message",
-        data
-      );
+  socket.on(
+    "react_message",
+    (data)=>{
 
-  });
+
+ socket.to(data.room)
+.emit(
+ "react_message",
+ data
+);
+
+
+    }
+  );
+
+
 
 
 
@@ -410,29 +462,37 @@ io.on("connection", (socket) => {
   // DISCONNECT
   // ==============================
 
-  socket.on("disconnect",()=>{
+
+  socket.on(
+    "disconnect",
+    ()=>{
 
 
-    if(socket.username){
+      if(socket.username){
 
-      onlineUsers.delete(socket.username);
+        onlineUsers.delete(
+          socket.username
+        );
+
+      }
+
+
+      io.emit(
+        "online_users",
+        Array.from(
+          onlineUsers.keys()
+        )
+      );
+
+
+      console.log(
+        "❌ Disconnected:",
+        socket.id
+      );
+
 
     }
-
-
-    io.emit(
-      "online_users",
-      Array.from(onlineUsers.keys())
-    );
-
-
-    console.log(
-      "❌ User Disconnected:",
-      socket.id
-    );
-
-
-  });
+  );
 
 
 });
